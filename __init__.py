@@ -26,17 +26,17 @@ class Convert2RGBM(bpy.types.Operator):
     bl_description = "Convert HDR/float image to RGBM format"
     bl_options = {'REGISTER', 'UNDO'}
 
+    @classmethod
+    def poll(cls, context):
+        sima = context.space_data
+        return sima.type == 'IMAGE_EDITOR' and sima.image and sima.image.is_float
+
     def execute(self, context):
         sima = context.space_data
         # Image
         ima = sima.image
         ima_name = ima.name
 
-        # Checking if image is float
-        if not ima.is_float:
-            self.report({'ERROR'}, "Need float/HDR image input.")
-            return {'CANCELLED'}  
-        
         # Removing .exr or .hdr prefix
         if ima_name[-4:] == '.exr' or ima_name[-4:] == '.hdr':
             ima_name = ima_name[:-4]
@@ -70,22 +70,30 @@ class Convert2RGBM(bpy.types.Operator):
         #print(ima)
         return {'FINISHED'}
 
-class ConvertToRGBMPanel(bpy.types.Panel):
-    bl_space_type = "IMAGE_EDITOR"
-    bl_region_type = "TOOLS"
-    #bl_context = "objectmode"
-    bl_label = "HDR to RGBM"
-    bl_category = "RGBM"
+#class ConvertToRGBMPanel(bpy.types.Panel):
+#    bl_space_type = "IMAGE_EDITOR"
+#    bl_region_type = "TOOLS"
+#    #bl_context = "objectmode"
+#    bl_label = "HDR to RGBM"
+#    bl_category = "RGBM"
+#
+#    def draw(self, context):
+#        c = self.layout.column()
+#        c.operator("image.convert_to_rgbm")
 
-    def draw(self, context):
-        c = self.layout.column()
-        c.operator("image.convert_to_rgbm")
+def draw(self, context):
+    row = self.layout.row()
+    row.label(text="Convert:")
+    row = self.layout.row()
+    row.operator("image.convert_to_rgbm", "HDR/Float to RGBM")
 
 def register():
     bpy.utils.register_module(__name__)
+    bpy.types.IMAGE_PT_image_properties.append(draw)
 
 def unregister():
-	bpy.utils.unregister_module(__name__)
+    bpy.utils.unregister_module(__name__)
+    bpy.types.IMAGE_PT_image_properties.remove(draw)
 
 if __name__ == "__main__":
     register()
