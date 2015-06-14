@@ -9,7 +9,8 @@ bl_info = {
     "category": "Material",
 }
 
-import bpy, math
+import bpy, math, os
+from bpy.app.handlers import persistent
 
 # function to clamp float
 def saturate(num, floats=True):
@@ -19,11 +20,11 @@ def saturate(num, floats=True):
         num = (1 if floats else 255)
     return num 
 
-class Convert2RGBM(bpy.types.Operator):
+class EncodeToRGBM(bpy.types.Operator):
     """Nice Useful Tooltip"""
-    bl_idname = "image.convert_to_rgbm"
-    bl_label = "Convert HDR to RGBM"
-    bl_description = "Convert HDR/float image to RGBM format"
+    bl_idname = "image.encode_to_rgbm"
+    bl_label = "Encode HDR to RGBM"
+    bl_description = "Encode HDR/float image to RGBM format. Create new image with '_RGBM.png' prefix"
     bl_options = {'REGISTER', 'UNDO'}
 
     @classmethod
@@ -41,10 +42,10 @@ class Convert2RGBM(bpy.types.Operator):
         if ima_name[-4:] == '.exr' or ima_name[-4:] == '.hdr':
             ima_name = ima_name[:-4]
 
-        target_ima = bpy.data.images.get(ima_name + '_RGBM')
+        target_ima = bpy.data.images.get(ima_name + '_RGBM.png')
         if not target_ima:
             target_ima = bpy.data.images.new(
-                    name = ima_name + '_RGBM',
+                    name = ima_name + '_RGBM.png',
                     width = ima.size[0],
                     height = ima.size[1],
                     alpha = True,
@@ -67,33 +68,48 @@ class Convert2RGBM(bpy.types.Operator):
         
         sima.image = target_ima
 
-        #print(ima)
         return {'FINISHED'}
-
-#class ConvertToRGBMPanel(bpy.types.Panel):
-#    bl_space_type = "IMAGE_EDITOR"
-#    bl_region_type = "TOOLS"
-#    #bl_context = "objectmode"
-#    bl_label = "HDR to RGBM"
-#    bl_category = "RGBM"
-#
-#    def draw(self, context):
-#        c = self.layout.column()
-#        c.operator("image.convert_to_rgbm")
 
 def draw(self, context):
     row = self.layout.row()
     row.label(text="Convert:")
     row = self.layout.row()
-    row.operator("image.convert_to_rgbm", "HDR/Float to RGBM")
+    row.operator("image.encode_to_rgbm")
 
 def register():
     bpy.utils.register_module(__name__)
     bpy.types.IMAGE_PT_image_properties.append(draw)
 
 def unregister():
-    bpy.utils.unregister_module(__name__)
     bpy.types.IMAGE_PT_image_properties.remove(draw)
+    bpy.utils.unregister_module(__name__)
+
+
+@persistent
+def load_node_groups(scene):
+    root = bpy.utils.script_path_user()
+    sep = os.sep
+
+    # get addons folder
+    filepath = root + sep + "addons"
+
+    # Dealing with two possible name for addon folder
+    dirs = next(os.walk(filepath))[1]
+    folder = [x for x in dirs if x == 'hdr-2-rgbm' or x == 'hdr-2-rgbm-master'][0]
+
+    # Node groups necessary are in nodegroups_lib.blend
+    filepath = filepath + sep + folder + sep + "nodegroups_lib.blend"
+
+    # Load node groups
+    with bpy.data.libraries.load(filepath) as (data_from, data_to):
+
+        exist_groups = [ng.name for ng in bpy.data.node_groups]
+        for ng in data_from.node_groups:
+            if ng not in exist_groups:
+                data_to.node_groups.append(ng)
+
+# Load decode rgbm node groups after loading blend file
+bpy.app.handlers.load_post.append(load_node_groups)
 
 if __name__ == "__main__":
     register()
