@@ -38,6 +38,9 @@ class EncodeToRGBM(bpy.types.Operator):
         ima = sima.image
         ima_name = ima.name
 
+        if ima.colorspace_settings.name != 'Linear':
+            ima.colorspace_settings.name = 'Linear'
+
         # Removing .exr or .hdr prefix
         if ima_name[-4:] == '.exr' or ima_name[-4:] == '.hdr':
             ima_name = ima_name[:-4]
